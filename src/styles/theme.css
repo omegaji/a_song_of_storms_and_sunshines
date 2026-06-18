@@ -136,20 +136,6 @@
   position: relative;
 }
 
-/* Ruled lines on the content page: subtle ink line at the baseline of each row. */
-.diary-page--content .diary-page__paper {
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent calc(var(--line-h) - 7px),
-    rgba(80, 50, 20, 0.28) calc(var(--line-h) - 7px),
-    rgba(80, 50, 20, 0.28) calc(var(--line-h) - 6px),
-    transparent calc(var(--line-h) - 6px),
-    transparent var(--line-h)
-  );
-  background-size: 100% var(--line-h);
-}
-
 .diary-page__footer {
   position: absolute;
   bottom: -28px;
