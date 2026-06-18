@@ -16,7 +16,7 @@ const colors = {
 };
 
 const fonts = {
-  body: '"Patrick Hand", "Comic Sans MS", cursive',
+  body: '"EB Garamond", "Georgia", serif',
   title: '"Cormorant Garamond", "Georgia", serif',
 };
 
