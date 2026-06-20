@@ -1,10 +1,13 @@
 import type { Poem } from '../models/Poem';
-import type { Page } from '../models/Page';
+import type { Page, IndexEntry } from '../models/Page';
 
 export interface PageCapacity {
   heightPx: number;
+  lineHeightPx: number;
   measure: (line: string) => number;
 }
+
+const INDEX_HEADER_HEIGHT_PX = 96;
 
 export class Paginator {
   static splitPoemBody(poem: Poem, cap: PageCapacity): string[][] {
@@ -43,15 +46,36 @@ export class Paginator {
   }
 
   static composeBook(poems: Poem[], cap: PageCapacity): Page[] {
-    const pages: Page[] = [{ kind: 'cover', side: 'front' }];
+    // Phase 1: estimate index page count (deterministic from poem count).
+    const indexPageCount = computeIndexPageCount(poems.length, cap);
+
+    // Phase 2: build the page skeleton (covers + index placeholders + poems).
+    const pages: Page[] = [];
+    pages.push({ kind: 'cover', side: 'front' });
+
+    // Index placeholders — replaced with real index pages after positions are known.
+    for (let i = 0; i < indexPageCount; i++) {
+      pages.push({
+        kind: 'index',
+        entries: [],
+        isFirstPage: i === 0,
+        diaryPageNumber: 0,
+      });
+    }
+
+    // Pad so the first poem title lands on a LEFT page.
+    while (pages.length % 2 === 0) {
+      pages.push({ kind: 'blank' });
+    }
+
+    const titlePositions = new Map<string, number>();
 
     for (const poem of poems) {
-      // Title must land on a LEFT page. With showCover, index 0 is the front
-      // cover (alone). Index 1 onwards: odd = left, even = right.
       while (pages.length % 2 === 0) {
         pages.push({ kind: 'blank' });
       }
-      pages.push({ kind: 'title', poem });
+      titlePositions.set(poem.slug, pages.length);
+      pages.push({ kind: 'title', poem, diaryPageNumber: 0 });
 
       const bodyPages = Paginator.splitPoemBody(poem, cap);
       bodyPages.forEach((lines, i) => {
@@ -61,6 +85,7 @@ export class Paginator {
           lines,
           pageOfPoem: i + 1,
           totalPagesOfPoem: bodyPages.length,
+          diaryPageNumber: 0,
         });
       });
     }
@@ -69,8 +94,85 @@ export class Paginator {
       pages.push({ kind: 'blank' });
     }
     pages.push({ kind: 'cover', side: 'back' });
+
+    // Phase 3: assign continuous diary page numbers (skipping covers).
+    let diaryPageNumber = 0;
+    for (const p of pages) {
+      if (p.kind === 'cover') continue;
+      diaryPageNumber++;
+      (p as { diaryPageNumber?: number }).diaryPageNumber = diaryPageNumber;
+    }
+
+    // Phase 4: build real index entries and slot them into the placeholders.
+    const entries: IndexEntry[] = poems.map((poem, i) => {
+      const bookIndex = titlePositions.get(poem.slug) ?? 0;
+      const titlePage = pages[bookIndex] as { diaryPageNumber: number };
+      return {
+        srNo: i + 1,
+        title: poem.title,
+        slug: poem.slug,
+        diaryPageNumber: titlePage.diaryPageNumber,
+        bookIndex,
+      };
+    });
+
+    const indexPagesContent = paginateIndex(entries, cap);
+
+    // Replace placeholders. If we paginated to fewer pages than reserved,
+    // remaining slots stay as empty index pages (rare edge case).
+    let ip = 0;
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i];
+      if (page.kind === 'index') {
+        const slice = indexPagesContent[ip++];
+        if (slice) {
+          pages[i] = {
+            kind: 'index',
+            entries: slice,
+            isFirstPage: page.isFirstPage,
+            diaryPageNumber: page.diaryPageNumber,
+          };
+        }
+      }
+    }
+
     return pages;
   }
+}
+
+function computeIndexPageCount(numEntries: number, cap: PageCapacity): number {
+  if (numEntries === 0) return 1;
+  const firstPageCapacity = Math.max(
+    1,
+    Math.floor((cap.heightPx - INDEX_HEADER_HEIGHT_PX) / cap.lineHeightPx),
+  );
+  const subsequentPageCapacity = Math.max(
+    1,
+    Math.floor(cap.heightPx / cap.lineHeightPx),
+  );
+  if (numEntries <= firstPageCapacity) return 1;
+  const remaining = numEntries - firstPageCapacity;
+  return 1 + Math.ceil(remaining / subsequentPageCapacity);
+}
+
+function paginateIndex(entries: IndexEntry[], cap: PageCapacity): IndexEntry[][] {
+  if (entries.length === 0) return [[]];
+  const pages: IndexEntry[][] = [];
+  const firstPageCapacity = Math.max(
+    1,
+    Math.floor((cap.heightPx - INDEX_HEADER_HEIGHT_PX) / cap.lineHeightPx),
+  );
+  const subsequentPageCapacity = Math.max(
+    1,
+    Math.floor(cap.heightPx / cap.lineHeightPx),
+  );
+  let cursor = 0;
+  while (cursor < entries.length) {
+    const cap_ = pages.length === 0 ? firstPageCapacity : subsequentPageCapacity;
+    pages.push(entries.slice(cursor, cursor + cap_));
+    cursor += cap_;
+  }
+  return pages;
 }
 
 function lastBlankIndex(lines: string[]): number {

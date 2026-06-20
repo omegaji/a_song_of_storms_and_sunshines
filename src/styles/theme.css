@@ -138,15 +138,41 @@
 
 .diary-page__footer {
   position: absolute;
-  bottom: -28px;
+  left: 0;
   right: 0;
+  bottom: 16px;
+  text-align: center;
   font-family: var(--font-body);
   font-size: 0.78em;
   color: var(--ink-soft);
+  letter-spacing: 0.12em;
   opacity: 0.75;
 }
 
-/* Title page layout — no ruled lines, centered title. */
+/* ---------- Back-to-index button ---------- */
+.diary-back-to-index {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(243, 233, 208, 0.6);
+  border: 1px solid rgba(90, 74, 53, 0.35);
+  border-radius: 12px;
+  padding: 4px 10px;
+  font-family: var(--font-body);
+  font-size: 0.75em;
+  color: var(--ink-soft);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  z-index: 5;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.diary-back-to-index:hover {
+  background: rgba(80, 50, 20, 0.15);
+  color: var(--ink);
+}
+
+/* ---------- Title page ---------- */
 .diary-page--title .diary-page__paper {
   justify-content: center;
   align-items: center;
@@ -185,7 +211,7 @@
   letter-spacing: 0.02em;
 }
 
-/* Body content */
+/* ---------- Body content ---------- */
 .diary-body {
   font-family: var(--font-body);
   color: var(--ink);
@@ -206,7 +232,100 @@
   min-height: var(--line-h);
 }
 
-/* Blank page */
+/* ---------- Index page ---------- */
+.diary-page--index .diary-page__paper {
+  align-items: stretch;
+}
+
+.diary-index__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.diary-index__title {
+  font-family: var(--font-title);
+  font-style: italic;
+  font-weight: 500;
+  color: var(--ink);
+  font-size: clamp(28px, 4vw, 42px);
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.diary-index__table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-body);
+  color: var(--ink);
+  font-size: var(--body-size);
+}
+
+.diary-index__row {
+  display: grid;
+  grid-template-columns: 2.4em 1fr 3em;
+  align-items: baseline;
+  gap: 10px;
+  line-height: var(--line-h);
+  padding: 2px 4px;
+  border-bottom: 1px dotted rgba(80, 50, 20, 0.25);
+}
+
+.diary-index__row--head {
+  border-bottom: 1px solid rgba(80, 50, 20, 0.55);
+  font-style: italic;
+  color: var(--ink-soft);
+  font-size: 0.8em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.diary-index__col--num {
+  text-align: right;
+}
+
+.diary-index__col--page {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.diary-index__col--title {
+  text-align: left;
+}
+
+.diary-index__link {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(80, 50, 20, 0.5);
+}
+
+.diary-index__link:hover {
+  color: var(--cover-primary);
+  text-decoration-color: var(--cover-primary);
+}
+
+/* ---------- Blank page ---------- */
 .diary-page--blank .diary-page__paper {
-  /* intentionally empty — could add a subtle ornament later */
+  align-items: center;
+  justify-content: center;
+}
+
+.diary-blank__ornament {
+  font-family: var(--font-title);
+  color: var(--ink-soft);
+  opacity: 0.35;
+  font-size: clamp(28px, 4vw, 44px);
 }

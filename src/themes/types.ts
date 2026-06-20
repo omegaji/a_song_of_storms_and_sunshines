@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 import type { Poem } from '../models/Poem';
+import type { IndexEntry } from '../models/Page';
 
 export interface ThemeColors {
   paper: string;
@@ -24,6 +25,8 @@ export interface CoverProps {
 
 export interface TitlePageProps {
   poem: Poem;
+  diaryPageNumber: number;
+  onJumpToIndex: () => void;
 }
 
 export interface ContentPageProps {
@@ -31,6 +34,19 @@ export interface ContentPageProps {
   lines: string[];
   pageOfPoem: number;
   totalPagesOfPoem: number;
+  diaryPageNumber: number;
+  onJumpToIndex: () => void;
+}
+
+export interface IndexPageProps {
+  entries: IndexEntry[];
+  isFirstPage: boolean;
+  diaryPageNumber: number;
+  onJumpToEntry: (bookIndex: number) => void;
+}
+
+export interface BlankPageProps {
+  diaryPageNumber?: number;
 }
 
 export interface Theme {
@@ -39,8 +55,10 @@ export interface Theme {
   fonts: ThemeFonts;
   bookTitle: string;
   bookSubtitle?: string;
+  indexTitle: string;
   Cover: ComponentType<CoverProps>;
   TitlePage: ComponentType<TitlePageProps>;
   ContentPage: ComponentType<ContentPageProps>;
-  BlankPage: ComponentType;
+  IndexPage: ComponentType<IndexPageProps>;
+  BlankPage: ComponentType<BlankPageProps>;
 }

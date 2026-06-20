@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import HTMLFlipBook from 'react-pageflip';
 import type { Poem } from '../models/Poem';
 import type { Page } from '../models/Page';
@@ -21,7 +21,6 @@ function calcDims(): Dimensions {
     const h = Math.min(vh * 0.85, w * 1.45);
     return { width: Math.floor(w), height: Math.floor(h), isMobile };
   }
-  // Landscape (two-page) spread: total book width ~ 70% of viewport, capped.
   const totalBookWidth = Math.min(vw * 0.72, 1100);
   const w = Math.floor(totalBookWidth / 2);
   const h = Math.min(vh * 0.9, w * 1.5);
@@ -29,13 +28,13 @@ function calcDims(): Dimensions {
 }
 
 const PAGE_PADDING_X_DESKTOP = 38;
-const PAGE_PADDING_Y_DESKTOP = 56;
+const PAGE_PADDING_Y_DESKTOP = 44;
 const PAGE_PADDING_X_MOBILE = 24;
-const PAGE_PADDING_Y_MOBILE = 44;
+const PAGE_PADDING_Y_MOBILE = 36;
 const FONT_SIZE_DESKTOP = 20;
 const FONT_SIZE_MOBILE = 18;
-const LINE_HEIGHT_DESKTOP = 34;
-const LINE_HEIGHT_MOBILE = 30;
+const LINE_HEIGHT_DESKTOP = 30;
+const LINE_HEIGHT_MOBILE = 28;
 
 export function Flipbook({ poems }: { poems: Poem[] }) {
   const theme = useTheme();
@@ -43,6 +42,9 @@ export function Flipbook({ poems }: { poems: Poem[] }) {
   const [pages, setPages] = useState<Page[]>([]);
   const [fontsReady, setFontsReady] = useState(false);
   const measurerRef = useRef<HTMLDivElement | null>(null);
+  const flipRef = useRef<{ pageFlip: () => { flip: (n: number) => void } } | null>(
+    null,
+  );
 
   const padX = dims.isMobile ? PAGE_PADDING_X_MOBILE : PAGE_PADDING_X_DESKTOP;
   const padY = dims.isMobile ? PAGE_PADDING_Y_MOBILE : PAGE_PADDING_Y_DESKTOP;
@@ -69,16 +71,34 @@ export function Flipbook({ poems }: { poems: Poem[] }) {
     if (!node) return;
 
     // Reserve a little extra for the page-number footer.
-    const availableHeight = dims.height - padY * 2 - 24;
+    const availableHeight = dims.height - padY * 2 - 28;
 
     const measure = (line: string): number => {
       node.textContent = line.trim() === '' ? ' ' : line;
       return node.offsetHeight;
     };
 
-    const cap: PageCapacity = { heightPx: availableHeight, measure };
+    const cap: PageCapacity = {
+      heightPx: availableHeight,
+      lineHeightPx,
+      measure,
+    };
     setPages(Paginator.composeBook(poems, cap));
-  }, [poems, dims, fontsReady, padY]);
+  }, [poems, dims, fontsReady, padY, lineHeightPx]);
+
+  const indexBookIndex = useMemo(
+    () => pages.findIndex((p) => p.kind === 'index'),
+    [pages],
+  );
+
+  const handleJumpToIndex = useCallback(() => {
+    if (indexBookIndex < 0) return;
+    flipRef.current?.pageFlip()?.flip(indexBookIndex);
+  }, [indexBookIndex]);
+
+  const handleJumpToEntry = useCallback((bookIndex: number) => {
+    flipRef.current?.pageFlip()?.flip(bookIndex);
+  }, []);
 
   const measurerStyle = useMemo(
     () => ({
@@ -113,18 +133,42 @@ export function Flipbook({ poems }: { poems: Poem[] }) {
     <div className="book-stage" style={themeVars}>
       <div ref={measurerRef} style={measurerStyle} aria-hidden />
       {pages.length > 0 && (
-        <BookView pages={pages} dims={dims} key={`${dims.width}x${dims.height}`} />
+        <BookView
+          pages={pages}
+          dims={dims}
+          flipRef={flipRef}
+          onJumpToIndex={handleJumpToIndex}
+          onJumpToEntry={handleJumpToEntry}
+          key={`${dims.width}x${dims.height}`}
+        />
       )}
     </div>
   );
 }
 
-function BookView({ pages, dims }: { pages: Page[]; dims: Dimensions }) {
+interface BookViewProps {
+  pages: Page[];
+  dims: Dimensions;
+  flipRef: React.MutableRefObject<{
+    pageFlip: () => { flip: (n: number) => void };
+  } | null>;
+  onJumpToIndex: () => void;
+  onJumpToEntry: (bookIndex: number) => void;
+}
+
+function BookView({
+  pages,
+  dims,
+  flipRef,
+  onJumpToIndex,
+  onJumpToEntry,
+}: BookViewProps) {
   const theme = useTheme();
-  const { Cover, TitlePage, ContentPage, BlankPage } = theme;
+  const { Cover, TitlePage, ContentPage, IndexPage, BlankPage } = theme;
 
   return (
     <HTMLFlipBook
+      ref={flipRef as unknown as React.Ref<unknown>}
       width={dims.width}
       height={dims.height}
       size="fixed"
@@ -164,16 +208,32 @@ function BookView({ pages, dims }: { pages: Page[]; dims: Dimensions }) {
                 bookSubtitle={theme.bookSubtitle}
               />
             )}
-            {p.kind === 'title' && <TitlePage poem={p.poem} />}
+            {p.kind === 'title' && (
+              <TitlePage
+                poem={p.poem}
+                diaryPageNumber={p.diaryPageNumber}
+                onJumpToIndex={onJumpToIndex}
+              />
+            )}
             {p.kind === 'content' && (
               <ContentPage
                 poem={p.poem}
                 lines={p.lines}
                 pageOfPoem={p.pageOfPoem}
                 totalPagesOfPoem={p.totalPagesOfPoem}
+                diaryPageNumber={p.diaryPageNumber}
+                onJumpToIndex={onJumpToIndex}
               />
             )}
-            {p.kind === 'blank' && <BlankPage />}
+            {p.kind === 'index' && (
+              <IndexPage
+                entries={p.entries}
+                isFirstPage={p.isFirstPage}
+                diaryPageNumber={p.diaryPageNumber}
+                onJumpToEntry={onJumpToEntry}
+              />
+            )}
+            {p.kind === 'blank' && <BlankPage diaryPageNumber={p.diaryPageNumber} />}
           </div>
         );
       })}
