@@ -6,6 +6,7 @@ import type {
   IndexPageProps,
   BlankPageProps,
 } from './types';
+import diaryCoverUrl from './diary_cover.png';
 
 const colors = {
   paper: '#f3e9d0',
@@ -22,24 +23,24 @@ const fonts = {
   title: '"Cormorant Garamond", "Georgia", serif',
 };
 
-function DiaryCover({ side, bookTitle, bookSubtitle }: CoverProps) {
+function DiaryCover({ side, bookTitle }: CoverProps) {
+  if (side === 'front') {
+    return (
+      <div className="diary-cover diary-cover--front diary-cover--image">
+        <img
+          src={diaryCoverUrl}
+          alt={bookTitle}
+          className="diary-cover__image"
+        />
+      </div>
+    );
+  }
   return (
-    <div className={`diary-cover diary-cover--${side}`}>
+    <div className="diary-cover diary-cover--back">
       <div className="diary-cover__border">
-        {side === 'front' ? (
-          <div className="diary-cover__inner">
-            <div className="diary-cover__ornament">❦</div>
-            <h1 className="diary-cover__title">{bookTitle}</h1>
-            {bookSubtitle && (
-              <div className="diary-cover__subtitle">{bookSubtitle}</div>
-            )}
-            <div className="diary-cover__ornament diary-cover__ornament--bottom">❦</div>
-          </div>
-        ) : (
-          <div className="diary-cover__inner">
-            <div className="diary-cover__ornament diary-cover__ornament--small">❦</div>
-          </div>
-        )}
+        <div className="diary-cover__inner">
+          <div className="diary-cover__ornament diary-cover__ornament--small">❦</div>
+        </div>
       </div>
     </div>
   );
