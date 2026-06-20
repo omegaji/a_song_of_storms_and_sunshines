@@ -241,8 +241,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 18px;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
 .diary-index__title {
@@ -250,15 +250,16 @@
   font-style: italic;
   font-weight: 500;
   color: var(--ink);
-  font-size: clamp(28px, 4vw, 42px);
+  font-size: clamp(26px, 3.4vw, 36px);
   margin: 0;
+  line-height: 1.2;
   letter-spacing: 0.04em;
 }
 
 .diary-index__table {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
   font-family: var(--font-body);
   color: var(--ink);
   font-size: var(--body-size);
@@ -268,9 +269,9 @@
   display: grid;
   grid-template-columns: 2.4em 1fr 3em;
   align-items: baseline;
-  gap: 10px;
+  column-gap: 10px;
   line-height: var(--line-h);
-  padding: 2px 4px;
+  padding: 1px 4px;
   border-bottom: 1px dotted rgba(80, 50, 20, 0.25);
 }
 
@@ -278,9 +279,10 @@
   border-bottom: 1px solid rgba(80, 50, 20, 0.55);
   font-style: italic;
   color: var(--ink-soft);
-  font-size: 0.8em;
+  font-size: 0.78em;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  padding-bottom: 2px;
 }
 
 .diary-index__col--num {

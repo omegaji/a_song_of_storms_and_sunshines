@@ -42,6 +42,7 @@ export function Flipbook({ poems }: { poems: Poem[] }) {
   const [pages, setPages] = useState<Page[]>([]);
   const [fontsReady, setFontsReady] = useState(false);
   const measurerRef = useRef<HTMLDivElement | null>(null);
+  const indexMeasurerRef = useRef<HTMLDivElement | null>(null);
   const flipRef = useRef<{ pageFlip: () => { flip: (n: number) => void } } | null>(
     null,
   );
@@ -68,7 +69,8 @@ export function Flipbook({ poems }: { poems: Poem[] }) {
   useEffect(() => {
     if (!fontsReady) return;
     const node = measurerRef.current;
-    if (!node) return;
+    const indexNode = indexMeasurerRef.current;
+    if (!node || !indexNode) return;
 
     // Reserve a little extra for the page-number footer.
     const availableHeight = dims.height - padY * 2 - 28;
@@ -78,10 +80,18 @@ export function Flipbook({ poems }: { poems: Poem[] }) {
       return node.offsetHeight;
     };
 
+    // Row overhead per index entry: padding (2px top/bottom) + 1px border + 2px gap.
+    const INDEX_ROW_OVERHEAD = 7;
+    const measureIndexRow = (title: string): number => {
+      indexNode.textContent = title;
+      return indexNode.offsetHeight + INDEX_ROW_OVERHEAD;
+    };
+
     const cap: PageCapacity = {
       heightPx: availableHeight,
       lineHeightPx,
       measure,
+      measureIndexRow,
     };
     setPages(Paginator.composeBook(poems, cap));
   }, [poems, dims, fontsReady, padY, lineHeightPx]);
@@ -118,6 +128,32 @@ export function Flipbook({ poems }: { poems: Poem[] }) {
     [dims.width, padX, fontSizePx, lineHeightPx, theme.fonts.body],
   );
 
+  // Index-row measurer: same font + line-height as index titles, sized to
+  // the actual title column width so wrapped lines are counted correctly.
+  // Title column = page width minus padding, num column (2.4em), page column
+  // (3em) and the two 10px gaps between grid columns.
+  const indexTitleColWidth = useMemo(
+    () => Math.max(80, dims.width - padX * 2 - fontSizePx * 5.4 - 20),
+    [dims.width, padX, fontSizePx],
+  );
+  const indexMeasurerStyle = useMemo(
+    () => ({
+      position: 'absolute' as const,
+      visibility: 'hidden' as const,
+      pointerEvents: 'none' as const,
+      left: -99999,
+      top: 0,
+      width: indexTitleColWidth,
+      fontFamily: theme.fonts.body,
+      fontSize: `${fontSizePx}px`,
+      lineHeight: `${lineHeightPx}px`,
+      textAlign: 'left' as const,
+      whiteSpace: 'normal' as const,
+      wordBreak: 'break-word' as const,
+    }),
+    [indexTitleColWidth, fontSizePx, lineHeightPx, theme.fonts.body],
+  );
+
   const themeVars = useMemo(
     () =>
       ({
@@ -132,6 +168,7 @@ export function Flipbook({ poems }: { poems: Poem[] }) {
   return (
     <div className="book-stage" style={themeVars}>
       <div ref={measurerRef} style={measurerStyle} aria-hidden />
+      <div ref={indexMeasurerRef} style={indexMeasurerStyle} aria-hidden />
       {pages.length > 0 && (
         <BookView
           pages={pages}

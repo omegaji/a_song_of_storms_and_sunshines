@@ -5,9 +5,14 @@ export interface PageCapacity {
   heightPx: number;
   lineHeightPx: number;
   measure: (line: string) => number;
+  measureIndexRow: (title: string) => number;
 }
 
-const INDEX_HEADER_HEIGHT_PX = 96;
+// Vertical space taken by the "Contents" header block (title + rule + margin) on
+// the first index page only. Tweak in tandem with the CSS in theme.css.
+const INDEX_CONTENTS_HEADER_PX = 76;
+// The per-page "No. | Title | Page" row header. Present on every index page.
+const INDEX_TABLE_HEAD_ROW_PX = 30;
 
 export class Paginator {
   static splitPoemBody(poem: Poem, cap: PageCapacity): string[][] {
@@ -46,8 +51,18 @@ export class Paginator {
   }
 
   static composeBook(poems: Poem[], cap: PageCapacity): Page[] {
-    // Phase 1: estimate index page count (deterministic from poem count).
-    const indexPageCount = computeIndexPageCount(poems.length, cap);
+    // Phase 1: paginate the index using actual row measurements so we know
+    // exactly how many index pages to reserve. Page numbers and book indices
+    // are filled in afterwards — only titles matter for sizing.
+    const tempEntries: IndexEntry[] = poems.map((poem, i) => ({
+      srNo: i + 1,
+      title: poem.title,
+      slug: poem.slug,
+      diaryPageNumber: 0,
+      bookIndex: 0,
+    }));
+    const indexGroups = paginateIndex(tempEntries, cap);
+    const indexPageCount = indexGroups.length;
 
     // Phase 2: build the page skeleton (covers + index placeholders + poems).
     const pages: Page[] = [];
@@ -103,28 +118,22 @@ export class Paginator {
       (p as { diaryPageNumber?: number }).diaryPageNumber = diaryPageNumber;
     }
 
-    // Phase 4: build real index entries and slot them into the placeholders.
-    const entries: IndexEntry[] = poems.map((poem, i) => {
-      const bookIndex = titlePositions.get(poem.slug) ?? 0;
-      const titlePage = pages[bookIndex] as { diaryPageNumber: number };
-      return {
-        srNo: i + 1,
-        title: poem.title,
-        slug: poem.slug,
-        diaryPageNumber: titlePage.diaryPageNumber,
-        bookIndex,
-      };
-    });
+    // Phase 4: stamp real page numbers / book indices into the index groups
+    // we paginated in Phase 1, then slot them into the placeholder pages.
+    for (const group of indexGroups) {
+      for (const entry of group) {
+        const bookIndex = titlePositions.get(entry.slug) ?? 0;
+        const titlePage = pages[bookIndex] as { diaryPageNumber: number };
+        entry.bookIndex = bookIndex;
+        entry.diaryPageNumber = titlePage.diaryPageNumber;
+      }
+    }
 
-    const indexPagesContent = paginateIndex(entries, cap);
-
-    // Replace placeholders. If we paginated to fewer pages than reserved,
-    // remaining slots stay as empty index pages (rare edge case).
     let ip = 0;
     for (let i = 0; i < pages.length; i++) {
       const page = pages[i];
       if (page.kind === 'index') {
-        const slice = indexPagesContent[ip++];
+        const slice = indexGroups[ip++];
         if (slice) {
           pages[i] = {
             kind: 'index',
@@ -140,38 +149,26 @@ export class Paginator {
   }
 }
 
-function computeIndexPageCount(numEntries: number, cap: PageCapacity): number {
-  if (numEntries === 0) return 1;
-  const firstPageCapacity = Math.max(
-    1,
-    Math.floor((cap.heightPx - INDEX_HEADER_HEIGHT_PX) / cap.lineHeightPx),
-  );
-  const subsequentPageCapacity = Math.max(
-    1,
-    Math.floor(cap.heightPx / cap.lineHeightPx),
-  );
-  if (numEntries <= firstPageCapacity) return 1;
-  const remaining = numEntries - firstPageCapacity;
-  return 1 + Math.ceil(remaining / subsequentPageCapacity);
-}
-
 function paginateIndex(entries: IndexEntry[], cap: PageCapacity): IndexEntry[][] {
   if (entries.length === 0) return [[]];
   const pages: IndexEntry[][] = [];
-  const firstPageCapacity = Math.max(
-    1,
-    Math.floor((cap.heightPx - INDEX_HEADER_HEIGHT_PX) / cap.lineHeightPx),
-  );
-  const subsequentPageCapacity = Math.max(
-    1,
-    Math.floor(cap.heightPx / cap.lineHeightPx),
-  );
-  let cursor = 0;
-  while (cursor < entries.length) {
-    const cap_ = pages.length === 0 ? firstPageCapacity : subsequentPageCapacity;
-    pages.push(entries.slice(cursor, cursor + cap_));
-    cursor += cap_;
+  let current: IndexEntry[] = [];
+  let usedHeight = 0;
+  let availableHeight =
+    cap.heightPx - INDEX_TABLE_HEAD_ROW_PX - INDEX_CONTENTS_HEADER_PX;
+
+  for (const entry of entries) {
+    const h = cap.measureIndexRow(entry.title);
+    if (usedHeight + h > availableHeight && current.length > 0) {
+      pages.push(current);
+      current = [];
+      usedHeight = 0;
+      availableHeight = cap.heightPx - INDEX_TABLE_HEAD_ROW_PX;
+    }
+    current.push(entry);
+    usedHeight += h;
   }
+  if (current.length > 0) pages.push(current);
   return pages;
 }
 
